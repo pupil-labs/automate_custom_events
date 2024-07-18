@@ -1,4 +1,4 @@
-Welcome to |project| documentation!
+Welcome to "Automate custom events" documentation!
 ===================================
 
 .. toctree::
@@ -7,7 +7,7 @@ Welcome to |project| documentation!
    history
 
 
-.. automodule:: skeleton
+.. automodule:: automate_custom_events
     :members:
     :undoc-members:
     :show-inheritance:

@@ -46,3 +46,13 @@ def send_event_to_cloud(workspace_id, recording_id, keyword, timestamp_sec, API_
         logging.info(f"Event sent successfully: {data}")
     else:
         logging.error(f"Failed to send event: {response.status_code}, {response.text}")
+
+def download_raw_recording(recording_id: str, workspace_id: str, download_path: str, API_KEY) -> None:
+    os.makedirs(download_path, exist_ok=True)
+    status= download_url(f"/workspaces/{workspace_id}/recordings/{recording_id}.zip", download_path / f"{recording_id}.zip", API_KEY, chunk_size=128)
+    shutil.unpack_archive(download_path / f"{recording_id}.zip", download_path / f"{recording_id}")
+    os.remove(download_path / f"{recording_id}.zip")
+    for file_source in glob.glob(str(download_path / f"{recording_id}/*/*")):
+        file_source = Path(file_source)
+        file_destination = file_source.parents[1] / file_source.name
+        shutil.move(file_source,file_destination)

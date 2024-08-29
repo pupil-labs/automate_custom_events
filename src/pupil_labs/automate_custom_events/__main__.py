@@ -117,6 +117,7 @@ activity1_label.grid(row=10, column=0, padx=10, pady=5)
 activity1_entry.grid(row=10, column=1, padx=20, pady=20, ipadx=10, ipady=10)  # Add internal padding for larger appearance
 activity1_entry.insert(0, "")
 
+
 code1_label = ttk.Label(root, text="Event:", font=font_style)
 code1_entry = ttk.Entry(root, font=font_style)
 code1_label.grid(row=11, column=0, padx=10, pady=5)

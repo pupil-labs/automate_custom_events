@@ -11,7 +11,7 @@ API_URL = "https://api.cloud.pupil-labs.com/v2"
 def download_url(path: str, save_path: str, API_KEY, chunk_size=128) -> None:
     url = f"{API_URL}/{path}"
     r = requests.get(url, stream=True, headers={"api-key": API_KEY})
-    r.raise_for_status()  # Ensure we raise an exception for bad status codes
+    r.raise_for_status()  
     save_path = Path(save_path)
     with open(save_path, 'wb') as fd:
         for chunk in r.iter_content(chunk_size=chunk_size):
@@ -49,7 +49,7 @@ def send_event_to_cloud(workspace_id, recording_id, keyword, timestamp_sec, API_
 
 def download_raw_recording(recording_id: str, workspace_id: str, download_path: str, API_KEY) -> None:
     os.makedirs(download_path, exist_ok=True)
-    status= download_url(f"/workspaces/{workspace_id}/recordings/{recording_id}.zip", download_path / f"{recording_id}.zip", API_KEY, chunk_size=128)
+    download_url(f"/workspaces/{workspace_id}/recordings/{recording_id}.zip", download_path / f"{recording_id}.zip", API_KEY, chunk_size=128)
     shutil.unpack_archive(download_path / f"{recording_id}.zip", download_path / f"{recording_id}")
     os.remove(download_path / f"{recording_id}.zip")
     for file_source in glob.glob(str(download_path / f"{recording_id}/*/*")):

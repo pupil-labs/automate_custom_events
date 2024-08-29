@@ -6,9 +6,7 @@ import numpy as np
 from rich.progress import Progress
 import pandas as pd
 from fractions import Fraction
-import os
-from pathlib import Path
-from typing import Union
+
 
 def isMonotonicInc(arr):
     return np.all(np.diff(arr) >= 0)
@@ -156,6 +154,7 @@ def create_gaze_overlay_video(merged_video, video_path, world_timestamps_df, out
                 if vid_frame is None:
                     break
                 img_original = vid_frame.to_ndarray(format="rgb24")
+                
                 # Prepare the frame
                 frame = cv2.cvtColor(img_original, cv2.COLOR_RGB2BGR)
                 frame = np.asarray(frame, dtype=np.float32)

@@ -19,3 +19,43 @@
 
 .. image:: https://img.shields.io/badge/skeleton-2022-informational
    :target: https://blog.jaraco.com/skeleton
+
+Introduction
+============
+
+Activity recognition module and gaze mapping module to automate custom events using the Cloud API and GPT-V
+
+Requirements
+============
+- OpenAI subscription and OpenAI API token
+- Pupil Cloud API token 
+
+Installation
+============
+
+In order to download the package, you can simply run the following command from the terminal:
+
+::
+
+   git clone https://github.com/pupil-labs/automate_custom_events.git
+
+Optional, but highly recommended: Create a virtual environment!
+
+::
+
+      python3.11 -m venv venv
+      source venv/bin/activate
+
+Go to the folder directory and install the dependencies
+
+::
+
+   cd your_directory/automate_custom_events
+   pip install -e . 
+
+Run it!
+========
+
+::
+
+   pl-automate-custom-events  

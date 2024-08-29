@@ -3,7 +3,6 @@ import pandas as pd
 import re
 import os
 import json
-from pupil_labs.automate_custom_events.get_cost import OpenAICost
 import aiohttp
 from pupil_labs.automate_custom_events.cloud_interaction import send_event_to_cloud
 import asyncio

@@ -7,11 +7,12 @@ import aiohttp
 from pupil_labs.automate_custom_events.cloud_interaction import send_event_to_cloud
 import asyncio
 
+
 class ProcessFrames:
-    def __init__(self, base64Frames, vid_modules, OPENAI_API_KEY, cloudtoken, recID, workID, 
+    def __init__(self, base64Frames, vid_modules, OPENAI_API_KEY, cloudtoken, recID, workID,
                  gm_description, gm_code, arm_activity1, arm_event_code1, batch_size,
                  start_time_seconds=25, end_time_seconds=35):
-        
+
         # General params
         self.base64Frames = base64Frames
         self.workspaceid = workID
@@ -39,14 +40,14 @@ class ProcessFrames:
         self.arm_end_code = "stops_" + arm_event_code1
 
         self.all_codes = [
-            self.gm_start_code, 
+            self.gm_start_code,
             self.gm_end_code,
-            self.arm_start_code, 
+            self.arm_start_code,
             self.arm_end_code
         ]
 
         self.base_prompt = f"""
-        Act as an experienced video annotator specialized in eye-tracking data. You will analyze video frames where a red circle indicates 
+        Act as an experienced video annotator specialized in eye-tracking data. You will analyze video frames where a red circle indicates
         the user's gaze point.
 
         For every frame, perform the following two tasks:
@@ -63,16 +64,16 @@ class ProcessFrames:
         """
 
         self.format = f"""
-        The format should be always the same except for the variables that change (<number>, <timestamp_float_number>, <code>). 
-        Do not add any extra dots, letters, or characters. 
-        
+        The format should be always the same except for the variables that change (<number>, <timestamp_float_number>, <code>).
+        Do not add any extra dots, letters, or characters.
+
         - If you find a frame that matches the start of the activity "The user starts {gm_description}" the response should be: Frame <self.mydf['frames']>: Timestamp - <self.mydf['timestamp [s]]>, Code - {self.gm_start_code}
         - If you find a frame that matches the end of the activity "The user stops {gm_description}" the response should be: Frame <self.mydf['frames']>: Timestamp - <self.mydf['timestamp [s]]>, Code - {self.gm_end_code}
         - If you find a frame that matches the start of the activity {arm_activity1}: Frame <self.mydf['frames']>: Timestamp - <self.mydf['timestamp [s]]>, Code - {self.arm_start_code}
         - If you find a frame that matches the end of the activity {arm_activity1}: Frame <self.mydf['frames']>: Timestamp - <self.mydf['timestamp [s]]>, Code - {self.arm_end_code}
         - If a frame doesn't match any of those activities: Frame <self.mydf['frames']>: Timestamp - <self.mydf['timestamp [s]]>, Code - None
         """
-      
+
         self.last_event = None
 
     def is_within_time_range(self, timestamp):
@@ -82,7 +83,6 @@ class ProcessFrames:
         if self.end_time_seconds is not None and timestamp > self.end_time_seconds:
             return False
         return True
-
 
     async def query_frame(self, index, session):
         # Check if the frame's timestamp is within the specified time range
@@ -96,7 +96,6 @@ class ProcessFrames:
         print(f"GM Flag is: {self.gm_flag}")
         print(f"ARM Flag is: {self.arm_flag}")
 
-              
         PROMPT_MESSAGES = [
             {
                 "role": "system",
@@ -107,7 +106,7 @@ class ProcessFrames:
                 "content": f"The frames are extracted from this video and the timestamps and frame numbers are stored in this dataframe: {json.dumps(video_gaze_df_content)}",
             },
             {
-                "role": "user", 
+                "role": "user",
                 "content": base64_frames_content
             }
         ]
@@ -143,7 +142,7 @@ class ProcessFrames:
                             print(f"GM Flag: {self.gm_flag}, ARM Flag: {self.arm_flag}, Detected Code: {code}")
 
                             # --- Gaze Module ---
-                            gm_event_sent = False  
+                            gm_event_sent = False
                             if not self.gm_flag:  # If gm_flag is False, check for start event
                                 if code == self.gm_start_code:
                                     self.gm_flag = True
@@ -157,7 +156,7 @@ class ProcessFrames:
                                 self.last_event = code
                                 print("Send GM_end_event when activity has already started (Flag true)")
                                 gm_event_sent = True
-                            
+
                             # If GM event is sent, return the response and don't process further
                             if gm_event_sent:
                                 return {
@@ -181,7 +180,7 @@ class ProcessFrames:
                                 self.last_event = code
                                 print("Send ARM_end_event when activity has already started (Flag true)")
                                 arm_event_sent = True
-                            
+
                             # If ARM event is sent, return the response
                             if arm_event_sent:
                                 return {
@@ -205,28 +204,28 @@ class ProcessFrames:
                     return None
         print("Max retries reached. Exiting.")
         return None
-    
+
     async def binary_search(self, session, start, end, identified_activities):
-            if start >= end:
-                return []
+        if start >= end:
+            return []
 
-            mid = (start + end) // 2
-            print(f"Binary search range: {start}-{end}, mid: {mid}")
+        mid = (start + end) // 2
+        print(f"Binary search range: {start}-{end}, mid: {mid}")
 
-            results = []
-            # Process the mid frame and ensure both prompts are evaluated
-            mid_frame_result = await self.query_frame(mid, session)
-            if mid_frame_result:
-                activity = mid_frame_result["code"]
-                if activity not in identified_activities:
-                    identified_activities.add(activity)
-                    results.append(mid_frame_result)
-                left_results = await self.binary_search(session, start, mid, identified_activities)
-                results.extend(left_results)
-            else:
-                right_results = await self.binary_search(session, mid + 1, end, identified_activities)
-                results.extend(right_results)
-            return results
+        results = []
+        # Process the mid frame and ensure both prompts are evaluated
+        mid_frame_result = await self.query_frame(mid, session)
+        if mid_frame_result:
+            activity = mid_frame_result["code"]
+            if activity not in identified_activities:
+                identified_activities.add(activity)
+                results.append(mid_frame_result)
+            left_results = await self.binary_search(session, start, mid, identified_activities)
+            results.extend(left_results)
+        else:
+            right_results = await self.binary_search(session, mid + 1, end, identified_activities)
+            results.extend(right_results)
+        return results
 
     async def process_batches(self, session, batch_size):
         identified_activities = set()

@@ -11,8 +11,7 @@ from pupil_labs.dynamic_content_on_rim.video.read import read_video_ts
 
 
 async def run_modules(OPENAI_API_KEY, worksp_id, rec_id, cloud_api_key, download_path,
-                      recpath, gm_description, gm_event_code,
-                      arm_activity1, arm_event_code1, batch_size, start_time_seconds, end_time_seconds
+                      recpath, description, event_code, batch_size, start_time_seconds, end_time_seconds
                       ):
 
     #############################################################################
@@ -85,10 +84,11 @@ async def run_modules(OPENAI_API_KEY, worksp_id, rec_id, cloud_api_key, download
     #############################################################################
     # 3. Process Frames with GPT-v
     #############################################################################
-    async_process_frames = ProcessFrames(baseframes_modules, video_df_for_modules, OPENAI_API_KEY, cloud_api_key, rec_id, worksp_id, gm_description,
-                                         gm_event_code, arm_activity1, arm_event_code1, int(batch_size),
+    async_process_frames = ProcessFrames(baseframes_modules, video_df_for_modules, OPENAI_API_KEY, cloud_api_key, rec_id, worksp_id, description,
+                                         event_code, int(batch_size),
                                          start_time_seconds, end_time_seconds
                                          )
+    
     async_process_frames_output_events = await async_process_frames.prompting(recpath, int(batch_size))
     print(async_process_frames_output_events)
     final_output_path = pd.DataFrame(async_process_frames_output_events)

@@ -8,12 +8,13 @@ class TTKFormLayoutHelper:
         self.root = root
 
     def add_heading(self, text):
-        label = ttk.Label(self.root, text=text, style="Heading.TLabel")
+        label = ttk.Label(self.root, text=text, wraplength=500, style="Heading.TLabel")
         label.grid(row=self.row_idx, column=0, columnspan=2, sticky="w")
 
         self.row_idx += 1
 
     def add_row(self, text, widget=None, widget_grid_args=None):
+        # Get the background and foreground colors from the ttk Entry widget style
         if widget is None:
             widget = ttk.Entry(self.root)
 
@@ -32,6 +33,33 @@ class TTKFormLayoutHelper:
         label.grid(row=self.row_idx, column=0, sticky="w")
 
         self.row_idx += 1
+
+     # Function to create a labeled entry
+    def create_labeled_entry(self,parent, label_text, row, show=None, default_value=None):
+        """Helper function to create a label and entry widget in a given parent."""
+        label = ttk.Label(parent, text=label_text)
+        label.grid(row=row, column=0, sticky='w', padx=5, pady=5)
+
+        entry = ttk.Entry(parent, show=show) if show else ttk.Entry(parent)
+        entry.grid(row=row, column=1, sticky='ew', padx=5, pady=5)
+
+        if default_value:
+            entry.insert(0, default_value)
+
+        return entry
+
+
+    # Function to create a labeled folder selector
+    def create_labeled_folder_selector(self,parent, label_text, row, default_path):
+        """Helper function to create a label and folder selector widget in a given parent."""
+        label = ttk.Label(parent, text=label_text)
+        label.grid(row=row, column=0, sticky='w', padx=5, pady=5)
+
+        folder_selector = FolderSelector(parent, default_path)
+        folder_selector.grid(row=row, column=1, sticky='ew', padx=5, pady=5)
+
+        return folder_selector
+
 
 
 class FolderSelector(ttk.Frame):

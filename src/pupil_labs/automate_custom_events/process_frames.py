@@ -6,7 +6,9 @@ import json
 import aiohttp
 from pupil_labs.automate_custom_events.cloud_interaction import send_event_to_cloud
 import asyncio
+import logging
 
+logger = logging.getLogger(__name__)
 
 class ProcessFrames:
     def __init__(self, base64Frames, vid_modules, OPENAI_API_KEY, cloudtoken, recID, workID,
@@ -24,11 +26,6 @@ class ProcessFrames:
         self.session_cost = 0
         self.batch_size = batch_size
 
-        # self.arm_activity = arm_activity1
-        # # Flags for tracking activities
-        # self.gm_flag = False  # Flag for gaze module
-        # self.arm_flag = False  # Flag for arm activity
-
         # Time range parameters
         self.start_time_seconds = int(start_time_seconds)
         self.end_time_seconds = int(end_time_seconds)
@@ -43,9 +40,8 @@ class ProcessFrames:
         You are an experienced video annotator specialized in eye-tracking data analysis.
 
         **Task:**
-
-        - Analyze each frame of the provided video sequence, which includes a gaze overlay (a red circle indicating where the user is looking).
-        - Identify when any of the specified activities **start** or **end** in the video based on the visual content and the gaze location.
+        - Analyze the frames of this egocentric video, the red circle in the overlay indicates where the wearer is looking.
+        - Identify when any of the specified activities happen in the video based on the visual content (video feed) and the gaze location (red circle).
 
         **Activities and Corresponding Codes:**
 
@@ -59,33 +55,30 @@ class ProcessFrames:
 
         - For each frame:
             - Examine the visual elements and the position of the gaze overlay.
-            - Determine if any of the specified activities are **starting** or **ending**.
-                - If an activity is **starting**, record the following information:
+            - Determine if any of the specified activities are detected in the frame.
+                - If an activity is detected, record the following information:
                     - **Frame Number:** [frame number]
                     - **Timestamp:** [timestamp from the provided dataframe]
-                    - **Code:** start_[corresponding activity code]
-                - If an activity is **ending**, record:
-                    - **Frame Number:** [frame number]
-                    - **Timestamp:** [timestamp from the provided dataframe]
-                    - **Code:** end_[corresponding activity code]
-        - Only consider the activities listed above.
+                    - **Code:** [corresponding activity code]
+                - If an activity is not detected, move to the next frame. 
+        - Only consider the activities listed above. Be as precise as possible. 
         - Ensure the output is accurate and formatted correctly.
 
         **Output Format:**
 
         ```
-        Frame [frame number]: Timestamp - [timestamp], Code - [start/end]_[code]
+        Frame [frame number]: Timestamp - [timestamp], Code - [code]
         ```
 
         **Examples:**
 
-        - If in frame 25 the user **starts** driving under a bridge and the timestamp is 65, the output should be:
+        - If in frame 25 the user is cutting a red pepper and the timestamp is 65, the output should be:
             ```
-            Frame 25: Timestamp - 65, Code - start_driving_under_bridge
+            Frame 25: Timestamp - 65, Code - cutting_red_pper
             ```
-        - If in frame 50 the user **stops** turning left, the output should be:
+        - If in frame 50 the user is looking at the rear mirror, the output should be:
             ```
-            Frame 50: Timestamp - [timestamp], Code - end_turning_left
+            Frame 50: Timestamp - [timestamp], Code - looking_rear_mirror
             ```
         """
 
@@ -103,7 +96,7 @@ class ProcessFrames:
         # Check if the frame's timestamp is within the specified time range
         timestamp = self.mydf.iloc[index]['timestamp [s]']
         if not self.is_within_time_range(timestamp):
-            print(f"Timestamp {timestamp} is not within selected timerange")
+            #print(f"Timestamp {timestamp} is not within selected timerange")
             return None
 
         base64_frames_content = [{"image": self.base64Frames[index], "resize": 768}]
@@ -152,44 +145,23 @@ class ProcessFrames:
                             frame_number = int(match[0])
                             timestamp = float(match[1])
                             code = match[2]
+                            # # Check if the activity code is valid
+                            if code not in self.codes:
+                                print("The activity was not detected")
+                                continue
 
-                            # Parse the code to get the prefix and activity code
-                            code_match = re.match(r'(start|end)_(.+)', code)
-                            if code_match:
-                                prefix = code_match.group(1)  # 'start' or 'end'
-                                activity_code = code_match.group(2)
-
-                                # Check if the activity code is valid
-                                if activity_code not in self.codes:
-                                    print(f"Invalid activity code: {activity_code}")
-                                    continue
-
-                                # Get the current state of the activity
-                                activity_active = self.activity_states[activity_code]
-
-                                if prefix == 'start':
-                                    if not activity_active:
-                                        # Activity is starting
-                                        self.activity_states[activity_code] = True
-                                        send_event_to_cloud(self.workspaceid, self.recid, code, timestamp, self.cloud_token)
-                                        print(f"Sent start event for {activity_code}")
-                                    else:
-                                        # Start event already sent, ignore
-                                        print(f"Start event for {activity_code} already sent, ignoring.")
-                                elif prefix == 'end':
-                                    if activity_active:
-                                        # Activity is ending
-                                        self.activity_states[activity_code] = False
-                                        send_event_to_cloud(self.workspaceid, self.recid, code, timestamp, self.cloud_token)
-                                        print(f"Sent end event for {activity_code}")
-                                    else:
-                                        # End event without a start, ignore
-                                        print(f"End event for {activity_code} received without a start, ignoring.")
-                                else:
-                                    print(f"Unknown prefix in code: {code}")
+                            # Get the current state of the activity
+                            activity_active = self.activity_states[code]
+                        
+                            if not activity_active:
+                                # Activity is starting or being detected for the first time
+                                self.activity_states[code] = True
+                                send_event_to_cloud(self.workspaceid, self.recid, code, timestamp, self.cloud_token)
+                                logger.info(f"Activity detected: {code}")
                             else:
-                                print(f"Invalid code format: {code}")
-
+                                # Activity already detected, ignore
+                                logger.debug(f"Event for {code} already sent - ignoring.")
+                                
                         return {
                             "frame_id": frame_number,
                             "timestamp [s]": timestamp,
@@ -201,10 +173,10 @@ class ProcessFrames:
                 elif response.status == 429:
                     retry_count += 1
                     wait_time = 2 ** retry_count  # Exponential backoff
-                    print(f"Rate limit hit. Retrying in {wait_time} seconds...")
+                    logger.warning(f"Rate limit hit. Retrying in {wait_time} seconds...")
                     await asyncio.sleep(wait_time)
                 else:
-                    print(f"Error: {response.status}")
+                    logger.warning(f"Error: {response.status}")
                     return None
         print("Max retries reached. Exiting.")
         return None
@@ -214,7 +186,7 @@ class ProcessFrames:
             return []
 
         mid = (start + end) // 2
-        print(f"Binary search range: {start}-{end}, mid: {mid}")
+        #print(f"Binary search range: {start}-{end}, mid: {mid}")
 
         results = []
         # Process the mid frame and ensure both prompts are evaluated
@@ -238,7 +210,7 @@ class ProcessFrames:
             end = min(i + batch_size, len(self.base64Frames))
             batch_results = await self.binary_search(session, i, end, identified_activities)
             all_results.extend(batch_results)
-            print(f"Processed batch {i} to {end}, results: {batch_results}")
+            #print(f"Processed batch {i} to {end}, results: {batch_results}")
 
     async def prompting(self, save_path, batch_size):
         async with aiohttp.ClientSession() as session:

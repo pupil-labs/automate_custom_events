@@ -17,14 +17,14 @@ async def run_modules(OPENAI_API_KEY, worksp_id, rec_id, cloud_api_key, download
     #############################################################################
     # 1. Download, read data, and create gaze overlay video to be sent to OpenAI
     #############################################################################
-    logging.info("[white bold on #0d122a]◎ Let's start! ⚡️[/]", extra={"markup": True})
+    logging.info("[white bold on #0d122a]◎ Getting the recording data from Pupil Cloud! ⚡️[/]", extra={"markup": True})
 
     download_recording(rec_id, worksp_id, download_path, cloud_api_key)
     recpath = Path(download_path / rec_id)
     files = glob.glob(str(Path(recpath, "*.mp4")))
     gaze_overlay_path = os.path.join(recpath, "gaze_overlay.mp4")
     if os.path.exists(gaze_overlay_path):
-        logging.info(f"{gaze_overlay_path} exists.")
+        logging.debug(f"{gaze_overlay_path} exists.")
 
     else:
         logging.warning(f"{gaze_overlay_path} does not exist.")
@@ -37,11 +37,11 @@ async def run_modules(OPENAI_API_KEY, worksp_id, rec_id, cloud_api_key, download
         _, frames, pts, ts = read_video_ts(raw_video_path)
 
         # Read gaze data
-        logging.info("Reading gaze data...")
+        logging.debug("Reading gaze data...")
         gaze_df = pd.read_csv(Path(recpath, 'gaze.csv'), dtype=oftype)
 
         # Read the world timestamps (needed for gaze module)
-        logging.info("Reading world timestamps...")
+        logging.debug("Reading world timestamps...")
 
         world_timestamps_df = pd.read_csv(
             Path(recpath, "world_timestamps.csv"), dtype=oftype
@@ -56,7 +56,7 @@ async def run_modules(OPENAI_API_KEY, worksp_id, rec_id, cloud_api_key, download
             "timestamp [ns]": ts_world,
         })
 
-        logging.info("Merging video and gaze dfs..")
+        logging.debug("Merging video and gaze dfs..")
         selected_col = ["timestamp [ns]", "gaze x [px]",  "gaze y [px]"]
         gaze_df = gaze_df[selected_col]
         gaze_df = gaze_df.sort_values(by="timestamp [ns]")
@@ -84,6 +84,7 @@ async def run_modules(OPENAI_API_KEY, worksp_id, rec_id, cloud_api_key, download
     #############################################################################
     # 3. Process Frames with GPT-v
     #############################################################################
+    logging.info("Start processing the frames..")
     async_process_frames = ProcessFrames(baseframes_modules, video_df_for_modules, OPENAI_API_KEY, cloud_api_key, rec_id, worksp_id, description,
                                          event_code, int(batch_size),
                                          start_time_seconds, end_time_seconds
@@ -93,6 +94,6 @@ async def run_modules(OPENAI_API_KEY, worksp_id, rec_id, cloud_api_key, download
     print(async_process_frames_output_events)
     final_output_path = pd.DataFrame(async_process_frames_output_events)
     final_output_path.to_csv(os.path.join(recpath, 'custom_events.csv'), index=False)
-    logging.info("[white bold on #0d122a]◎ Modules completed and events sent! ⚡️[/]", extra={"markup": True})
+    logging.info("[white bold on #0d122a]◎ Activity recognition completed and events sent! ⚡️[/]", extra={"markup": True})
 
     return final_output_path

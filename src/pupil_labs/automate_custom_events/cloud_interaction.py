@@ -47,7 +47,7 @@ def send_event_to_cloud(workspace_id, recording_id, keyword, timestamp_sec, API_
     data = {"name": keyword, "offset_s": timestamp_sec}
     response = requests.post(url, headers=headers, data=json.dumps(data))
     if response.status_code == 200:
-        logging.info(f"Event sent successfully: {data}")
+        logging.debug(f"Event sent successfully: {data}")
     else:
         logging.error(f"Failed to send event: {response.status_code}, {response.text}")
 

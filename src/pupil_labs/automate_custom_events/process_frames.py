@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class ProcessFrames:
     def __init__(self, base64Frames, vid_modules, OPENAI_API_KEY, cloudtoken, recID, workID,
                  prompt_description, prompt_codes, batch_size,
-                 start_time_seconds, end_time_seconds):#gm_code, arm_activity1, arm_event_code1,
+                 start_time_seconds, end_time_seconds):
 
         # General params
         self.base64Frames = base64Frames
@@ -118,7 +118,7 @@ class ProcessFrames:
         ]
 
         params = {
-            "model": "gpt-4o",
+            "model": "gpt-4o-2024-05-13", # gpt-4o-2024-05-13 is the old version / gpt-4o-2024-08-06 the newer
             "messages": PROMPT_MESSAGES,
             "max_tokens": 300,
         }
@@ -176,7 +176,7 @@ class ProcessFrames:
                     logger.warning(f"Rate limit hit. Retrying in {wait_time} seconds...")
                     await asyncio.sleep(wait_time)
                 else:
-                    logger.warning(f"Error: {response.status}")
+                    logger.debug(f"Error: {response.status}")
                     return None
         print("Max retries reached. Exiting.")
         return None
@@ -210,7 +210,6 @@ class ProcessFrames:
             end = min(i + batch_size, len(self.base64Frames))
             batch_results = await self.binary_search(session, i, end, identified_activities)
             all_results.extend(batch_results)
-            #print(f"Processed batch {i} to {end}, results: {batch_results}")
 
     async def prompting(self, save_path, batch_size):
         async with aiohttp.ClientSession() as session:
@@ -219,5 +218,4 @@ class ProcessFrames:
             output_df = pd.DataFrame(activity_data)
             output_df.to_csv(os.path.join(save_path, "output_detected_events.csv"), index=False)
             return output_df
-            #return await self.process_batches(session, batch_size, save_path)
 

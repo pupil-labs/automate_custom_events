@@ -64,7 +64,7 @@ async def run_task():
             end_time_seconds,
         )
     finally:
-        pass  
+        pass
 
 
 def clear_module_fields():
@@ -101,7 +101,7 @@ def on_run_click():
 
 # Create the main window
 root = tk.Tk()
-root.title("Module Controller")
+root.title("Annotator Assistant")
 root.geometry("600x1000")  # Adjusted window size
 
 # Center the main window
@@ -178,25 +178,36 @@ bg = "#000000"
 entry_fg = "white"
 
 url_entry = layout_helper.create_labeled_entry(
-    general_frame, "Recording Link", row=0, default_value=""
+    general_frame,
+    "Recording Link",
+    row=0,
+    default_value="https://api.cloud.pupil-labs.com/v2/workspaces/d6bde22c-0c74-4d7d-8ab6-65b665c3cb4e/recordings.zip?id=db4fcd00-ddbd-4add-a129-765df73777f3&share-key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJkNmJkZTIyYy0wYzc0LTRkN2QtOGFiNi02NWI2NjVjM2NiNGUiLCJtZXRob2QiOiJHRVQiLCJwYXRoIjoiL3YyL3dvcmtzcGFjZXMvZDZiZGUyMmMtMGM3NC00ZDdkLThhYjYtNjViNjY1YzNjYjRlL3JlY29yZGluZ3MuemlwIiwicXVlcnkiOiJpZD1kYjRmY2QwMC1kZGJkLTRhZGQtYTEyOS03NjVkZjczNzc3ZjMiLCJleHAiOjE3Mjk1OTg4MDkuMjM3NzYyfQ.FbVQm0bcRpXB1O-KsKYXxHHw5rS8xhoqAJnTz4lXDO4",
 )
 cloud_token_entry = layout_helper.create_labeled_entry(
-    general_frame, "Cloud API Token", row=1, show="*", default_value=""
+    general_frame,
+    "Cloud API Token",
+    row=1,
+    show="*",
+    default_value="FAcpksZHaDRrQF3wNi3KAYjFscHVKx9zA2ypbsbSQR6L",
 )
 openai_key_entry = layout_helper.create_labeled_entry(
-    general_frame, "OpenAI API Key", row=2, show="*", default_value="sk-"
+    general_frame,
+    "OpenAI API Key",
+    row=2,
+    show="*",
+    default_value="sk-t1ZIaZ5ofzOvoec94KTdEletffQWdzZpre1y_LCD5QT3BlbkFJzxXP1qAf3RDNo89_N1OJ4J0yfQRP1I9xoxF3xqAAkA",
 )
 download_path_entry = layout_helper.create_labeled_folder_selector(
     general_frame, "Download Path", row=3, default_path=Path.cwd()
 )
 batch_entry = layout_helper.create_labeled_entry(
-    general_frame, "Frame batch", row=4, default_value=""
+    general_frame, "Frame batch", row=4, default_value="20"
 )
 start_entry = layout_helper.create_labeled_entry(
-    general_frame, "Start (s)", row=5, default_value=""
+    general_frame, "Start (s)", row=5, default_value="5"
 )
 end_entry = layout_helper.create_labeled_entry(
-    general_frame, "End (s)", row=6, default_value=""
+    general_frame, "End (s)", row=6, default_value="15"
 )
 
 # Initially hide the general parameters section

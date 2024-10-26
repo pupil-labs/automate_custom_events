@@ -10,11 +10,22 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class ProcessFrames:
-    def __init__(self, base64Frames, vid_modules, OPENAI_API_KEY, cloudtoken, recID, workID,
-                 prompt_description, prompt_codes, batch_size,
-                 start_time_seconds, end_time_seconds):
 
+class ProcessFrames:
+    def __init__(
+        self,
+        base64Frames,
+        vid_modules,
+        OPENAI_API_KEY,
+        cloudtoken,
+        recID,
+        workID,
+        prompt_description,
+        prompt_codes,
+        batch_size,
+        start_time_seconds,
+        end_time_seconds,
+    ):
         # General params
         self.base64Frames = base64Frames
         self.workspaceid = workID
@@ -30,8 +41,8 @@ class ProcessFrames:
         self.start_time_seconds = int(start_time_seconds)
         self.end_time_seconds = int(end_time_seconds)
 
-        self.activities = re.split(r'\s*;\s*', prompt_description)
-        self.codes = re.split(r'\s*;\s*', prompt_codes)
+        self.activities = re.split(r"\s*;\s*", prompt_description)
+        self.codes = re.split(r"\s*;\s*", prompt_codes)
 
         # Initialize activity states
         self.activity_states = {code: False for code in self.codes}
@@ -94,9 +105,9 @@ class ProcessFrames:
 
     async def query_frame(self, index, session):
         # Check if the frame's timestamp is within the specified time range
-        timestamp = self.mydf.iloc[index]['timestamp [s]']
+        timestamp = self.mydf.iloc[index]["timestamp [s]"]
         if not self.is_within_time_range(timestamp):
-            #print(f"Timestamp {timestamp} is not within selected timerange")
+            # print(f"Timestamp {timestamp} is not within selected timerange")
             return None
 
         base64_frames_content = [{"image": self.base64Frames[index], "resize": 768}]
@@ -111,33 +122,36 @@ class ProcessFrames:
                 "role": "user",
                 "content": f"The frames are extracted from this video and the timestamps and frame numbers are stored in this dataframe: {json.dumps(video_gaze_df_content)}",
             },
-            {
-                "role": "user",
-                "content": base64_frames_content
-            }
+            {"role": "user", "content": base64_frames_content},
         ]
 
         params = {
-            "model": "gpt-4o-2024-05-13", # gpt-4o-2024-05-13 is the old version / gpt-4o-2024-08-06 the newer
+            "model": "gpt-4o-2024-05-13",  # gpt-4o-2024-05-13 is the old version / gpt-4o-2024-08-06 the newer
             "messages": PROMPT_MESSAGES,
             "max_tokens": 300,
         }
         headers = {
             "Authorization": f"Bearer {self.OPENAI_API_KEY}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
 
         retry_count = 0
         max_retries = 5
         while retry_count < max_retries:
-            async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=params) as response:
+            async with session.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=params,
+            ) as response:
                 if response.status == 200:
                     result = await response.json()
-                    response_message = result['choices'][0]['message']['content']
+                    response_message = result["choices"][0]["message"]["content"]
                     print("Response from OpenAI API:", response_message)
 
                     # Updated regex pattern to match the new output format
-                    pattern = r'Frame\s(\d+):\sTimestamp\s-\s([\d.]+),\sCode\s-\s(\w+_\w+)'
+                    pattern = (
+                        r"Frame\s(\d+):\sTimestamp\s-\s([\d.]+),\sCode\s-\s(\w+_\w+)"
+                    )
                     matches = re.findall(pattern, response_message)
 
                     if matches:
@@ -152,16 +166,24 @@ class ProcessFrames:
 
                             # Get the current state of the activity
                             activity_active = self.activity_states[code]
-                        
+
                             if not activity_active:
                                 # Activity is starting or being detected for the first time
                                 self.activity_states[code] = True
-                                send_event_to_cloud(self.workspaceid, self.recid, code, timestamp, self.cloud_token)
+                                send_event_to_cloud(
+                                    self.workspaceid,
+                                    self.recid,
+                                    code,
+                                    timestamp,
+                                    self.cloud_token,
+                                )
                                 logger.info(f"Activity detected: {code}")
                             else:
                                 # Activity already detected, ignore
-                                logger.debug(f"Event for {code} already sent - ignoring.")
-                                
+                                logger.debug(
+                                    f"Event for {code} already sent - ignoring."
+                                )
+
                         return {
                             "frame_id": frame_number,
                             "timestamp [s]": timestamp,
@@ -172,8 +194,10 @@ class ProcessFrames:
                         return None
                 elif response.status == 429:
                     retry_count += 1
-                    wait_time = 2 ** retry_count  # Exponential backoff
-                    logger.warning(f"Rate limit hit. Retrying in {wait_time} seconds...")
+                    wait_time = 2**retry_count  # Exponential backoff
+                    logger.warning(
+                        f"Rate limit hit. Retrying in {wait_time} seconds..."
+                    )
                     await asyncio.sleep(wait_time)
                 else:
                     logger.debug(f"Error: {response.status}")
@@ -186,7 +210,7 @@ class ProcessFrames:
             return []
 
         mid = (start + end) // 2
-        #print(f"Binary search range: {start}-{end}, mid: {mid}")
+        # print(f"Binary search range: {start}-{end}, mid: {mid}")
 
         results = []
         # Process the mid frame and ensure both prompts are evaluated
@@ -196,10 +220,14 @@ class ProcessFrames:
             if activity not in identified_activities:
                 identified_activities.add(activity)
                 results.append(mid_frame_result)
-            left_results = await self.binary_search(session, start, mid, identified_activities)
+            left_results = await self.binary_search(
+                session, start, mid, identified_activities
+            )
             results.extend(left_results)
         else:
-            right_results = await self.binary_search(session, mid + 1, end, identified_activities)
+            right_results = await self.binary_search(
+                session, mid + 1, end, identified_activities
+            )
             results.extend(right_results)
         return results
 
@@ -208,7 +236,9 @@ class ProcessFrames:
         all_results = []
         for i in range(0, len(self.base64Frames), batch_size):
             end = min(i + batch_size, len(self.base64Frames))
-            batch_results = await self.binary_search(session, i, end, identified_activities)
+            batch_results = await self.binary_search(
+                session, i, end, identified_activities
+            )
             all_results.extend(batch_results)
 
     async def prompting(self, save_path, batch_size):
@@ -216,6 +246,7 @@ class ProcessFrames:
             activity_data = await self.process_batches(session, batch_size)
             print("Filtered Activity Data:", activity_data)
             output_df = pd.DataFrame(activity_data)
-            output_df.to_csv(os.path.join(save_path, "output_detected_events.csv"), index=False)
+            output_df.to_csv(
+                os.path.join(save_path, "output_detected_events.csv"), index=False
+            )
             return output_df
-

@@ -3,78 +3,41 @@ from tkinter import ttk, filedialog
 
 
 class TTKFormLayoutHelper:
-    def __init__(self, root):
+    def __init__(self, frame, vertical_spacing=5):
         self.row_idx = 0
-        self.root = root
+        self.frame = frame
+        self.vertical_spacing = vertical_spacing
 
-    def add_heading_2(self, text, heading_font):
-        # Use tk.Text to control line spacing
-        text_widget = tk.Text(self.root, height=3, wrap="word", borderwidth=0, font=heading_font)
-        text_widget.insert("1.0", text)
-        # text_widget.tag_configure("center", justify='full')  # Optional centering
-        text_widget.tag_add("center", "1.0", "end")
-
-        # Adjust line spacing with spacing2 (spacing between lines)
-        text_widget.configure(spacing2=5, state="disabled")  # spacing2 adds space between lines
-        text_widget.grid(row=self.row_idx, column=0, columnspan=2, sticky="ew", pady=10)
-
-        self.row_idx += 2
-
-    def add_heading(self, text):
-        label = ttk.Label(self.root, text=text, wraplength=500, style="Heading.TLabel")
-        label.grid(row=self.row_idx, column=0, columnspan=2, sticky="w", pady=10)
-
-        self.row_idx += 1
-
-    def add_row(self, text, widget=None, widget_grid_args=None):
-        # Get the background and foreground colors from the ttk Entry widget style
+    def add_row(self, label_text, widget, widget_grid_args=None):
         if widget is None:
-            widget = ttk.Entry(self.root)
+            widget = ttk.Entry(self.frame)
 
         if widget_grid_args is None:
             widget_grid_args = {}
 
-        label = ttk.Label(self.root, text=text)
+        label = ttk.Label(self.frame, text=label_text)
         label.grid(row=self.row_idx, column=0, sticky="w")
-        # widget.grid(row=self.row_idx, column=1, sticky="ew", padx=10, **widget_grid_args)
+
+        widget_grid_args = {
+            "pady": self.vertical_spacing,
+            "sticky": "ew",
+            **widget_grid_args
+        }
+
         widget.grid(row=self.row_idx, column=1, padx=10, **widget_grid_args)
 
         self.row_idx += 1
         return widget
 
     def add_spacer_row(self):
-        label = ttk.Label(self.root)
-        label.grid(row=self.row_idx, column=0, sticky="w")
+        return self.add_row("")
 
-        self.row_idx += 1
-
-    # Function to create a labeled entry
-    def create_labeled_entry(self, parent, label_text, row, show=None, default_value=None):
+    def create_labeled_entry(self, parent, label_text, *args, **kwargs):
         """Helper function to create a label and entry widget in a given parent."""
-        label = ttk.Label(parent, text=label_text, style="Heading.TLabel")
-        label.grid(row=row, column=0, sticky='w', padx=5, pady=5)
-        entry_kwargs = {'style': 'Custom.TEntry'}
-        if show:
-            entry_kwargs['show'] = show
-
-        entry = ttk.Entry(parent, show=show) if show else ttk.Entry(parent)
-        entry.grid(row=row, column=1, sticky='ew', padx=5, pady=5)
-
-        if default_value:
-            entry.insert(0, default_value)
+        entry = ttk.Entry(parent, *args, **kwargs)
+        return self.add_row(label_text, entry)
 
         return entry
-
-    # Function to create a labeled folder selector
-    def create_labeled_folder_selector(self, parent, label_text, row, default_path):
-        """Helper function to create a label and folder selector widget in a given parent."""
-        label = ttk.Label(parent, text=label_text, style="Heading.TLabel")
-        label.grid(row=row, column=0, sticky='w', padx=5, pady=5)
-
-        folder_selector = FolderSelector(parent, default_path)
-        folder_selector.grid(row=row, column=1, sticky='ew', padx=5, pady=5)
-
-        return folder_selector
 
 
 class FolderSelector(ttk.Frame):
@@ -98,3 +61,35 @@ class FolderSelector(ttk.Frame):
 
     def get(self):
         return self.entry.get()
+
+
+class WrappedLabel(ttk.Label):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.bind('<Configure>', lambda _: self.config(wraplength=self.winfo_width()))
+
+
+class ConsoleText(tk.Frame):
+    def __init__(self, parent, *args, **kwargs):
+        super().__init__(parent)
+        self._text = tk.Text(self, *args, **kwargs)
+
+        self.scrollbar_y = tk.Scrollbar(self)
+        self.scrollbar_x = tk.Scrollbar(self, orient="horizontal")
+
+        self._text.config(yscrollcommand=self.scrollbar_y.set, xscrollcommand=self.scrollbar_x.set)
+        self.scrollbar_y.config(command=self._text.yview)
+        self.scrollbar_x.config(command=self._text.xview)
+
+        self.scrollbar_y.pack(side="right", fill="y")
+        self.scrollbar_x.pack(side="bottom", fill="x")
+        self._text.pack(side="left", fill="both", expand=True)
+
+        self._text.tag_configure("ERROR", foreground="red")
+        self._text.tag_configure("WARNING", foreground="orange")
+
+    def __getattr__(self, name):
+        return getattr(self._text, name)
+
+    def configure(self, **kwargs):
+        self._text.configure(**kwargs)

@@ -1,11 +1,12 @@
 import tkinter as tk
 from tkinter import ttk, filedialog
 
+
 class TTKFormLayoutHelper:
     def __init__(self, root):
         self.row_idx = 0
         self.root = root
-    
+
     def add_heading_2(self, text, heading_font):
         # Use tk.Text to control line spacing
         text_widget = tk.Text(self.root, height=3, wrap="word", borderwidth=0, font=heading_font)
@@ -47,10 +48,10 @@ class TTKFormLayoutHelper:
 
         self.row_idx += 1
 
-     # Function to create a labeled entry
-    def create_labeled_entry(self,parent, label_text, row, show=None, default_value=None):
+    # Function to create a labeled entry
+    def create_labeled_entry(self, parent, label_text, row, show=None, default_value=None):
         """Helper function to create a label and entry widget in a given parent."""
-        label = ttk.Label(parent, text=label_text,style="Heading.TLabel")
+        label = ttk.Label(parent, text=label_text, style="Heading.TLabel")
         label.grid(row=row, column=0, sticky='w', padx=5, pady=5)
         entry_kwargs = {'style': 'Custom.TEntry'}
         if show:
@@ -64,18 +65,16 @@ class TTKFormLayoutHelper:
 
         return entry
 
-
     # Function to create a labeled folder selector
-    def create_labeled_folder_selector(self,parent, label_text, row, default_path):
+    def create_labeled_folder_selector(self, parent, label_text, row, default_path):
         """Helper function to create a label and folder selector widget in a given parent."""
-        label = ttk.Label(parent, text=label_text,style="Heading.TLabel")
+        label = ttk.Label(parent, text=label_text, style="Heading.TLabel")
         label.grid(row=row, column=0, sticky='w', padx=5, pady=5)
 
         folder_selector = FolderSelector(parent, default_path)
         folder_selector.grid(row=row, column=1, sticky='ew', padx=5, pady=5)
 
         return folder_selector
-
 
 
 class FolderSelector(ttk.Frame):

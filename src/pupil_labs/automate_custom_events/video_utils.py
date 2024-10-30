@@ -8,16 +8,16 @@ import pandas as pd
 from fractions import Fraction
 
 
-def isMonotonicInc(arr):
+def is_sorted(arr):
     return np.all(np.diff(arr) >= 0)
 
 
-def get_baseframes(video_path, audio=False, auto_thread_type=True):
+def encode_video_as_base64(video_path, audio=False, auto_thread_type=True):
     """
     A function to read a video, extract frames, and store them as base64 encoded strings.
     :param video_path: the path to the video
     """
-    base64Frames = []
+    base64_frames = []
     # Read the video
     with av.open(video_path) as video_container, Progress() as progress:
         if audio:
@@ -28,10 +28,10 @@ def get_baseframes(video_path, audio=False, auto_thread_type=True):
         if auto_thread_type:
             stream.thread_type = "AUTO"
 
-        nframes = stream.frames
+        frame_count = stream.frames
         logging.info("Extracting pts...")
         pts, dts, ts = (list() for i in range(3))
-        decode_task = progress.add_task("👓 Decoding...", total=nframes)
+        decode_task = progress.add_task("👓 Decoding...", total=frame_count)
         for packet in video_container.demux(stream):
             for frame in packet.decode():
                 if frame is not None and frame.pts is not None:
@@ -50,7 +50,7 @@ def get_baseframes(video_path, audio=False, auto_thread_type=True):
                     # Convert the frame to an image and encode it in base64
                     img = frame.to_ndarray(format='bgr24')
                     _, buffer = cv2.imencode(".jpg", img)
-                    base64Frames.append(base64.b64encode(buffer).decode("utf-8"))
+                    base64_frames.append(base64.b64encode(buffer).decode("utf-8"))
 
             progress.advance(decode_task)
             progress.refresh()
@@ -59,8 +59,9 @@ def get_baseframes(video_path, audio=False, auto_thread_type=True):
             np.array(dts, dtype=np.uint64),
             np.array(ts, dtype=np.uint64),
         )
-        if not isMonotonicInc(pts):
+        if not is_sorted(pts):
             logging.warning("Pts are not monotonic increasing!.")
+
         if np.array_equal(pts, dts):
             logging.info("Pts and dts are equal, using pts")
 
@@ -68,19 +69,19 @@ def get_baseframes(video_path, audio=False, auto_thread_type=True):
         pts = pts[idc]
         ts = ts[idc]
 
-        if nframes != len(pts):
-            nframes = len(pts)
+        if frame_count != len(pts):
+            frame_count = len(pts)
         else:
-            logging.info(f"Video has {nframes} frames")
+            logging.info(f"Video has {frame_count} frames")
 
     timestamps_s = ts / 1e9
-    video_df = pd.DataFrame({
-        "frames": np.arange(nframes),
-        "pts": [int(pt) for pt in pts],
+    frame_metadata = pd.DataFrame({
+        "pts": pts.astype(int),
         "timestamp [ns]": ts,
         "timestamp [s]": timestamps_s
     })
-    return video_df, base64Frames  #, fps, nframes, pts, ts
+
+    return base64_frames, frame_metadata
 
 
 def get_frame(av_container, pts, last_pts, frame, audio=False):

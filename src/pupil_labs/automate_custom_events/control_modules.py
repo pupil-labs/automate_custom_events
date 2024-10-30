@@ -1,25 +1,21 @@
 import pandas as pd
-from pathlib import Path
-import os
-import glob
 import logging
 import numpy as np
 from pupil_labs.automate_custom_events.cloud_interaction import download_recording
 from pupil_labs.automate_custom_events.read_data import (
-    get_baseframes,
+    encode_video_as_base64,
     create_gaze_overlay_video,
 )
-from pupil_labs.automate_custom_events.process_frames import ProcessFrames
+from pupil_labs.automate_custom_events.frame_processor import FrameProcessor
 from pupil_labs.dynamic_content_on_rim.video.read import read_video_ts
 
 
 async def run_modules(
-    OPENAI_API_KEY,
+    openai_api_key,
     worksp_id,
     rec_id,
     cloud_api_key,
     download_path,
-    recpath,
     description,
     event_code,
     batch_size,
@@ -34,15 +30,14 @@ async def run_modules(
     )
 
     download_recording(rec_id, worksp_id, download_path, cloud_api_key)
-    recpath = Path(download_path / rec_id)
-    files = glob.glob(str(Path(recpath, "*.mp4")))
-    gaze_overlay_path = os.path.join(recpath, "gaze_overlay.mp4")
-    if os.path.exists(gaze_overlay_path):
-        logging.debug(f"{gaze_overlay_path} exists.")
+    recpath = download_path / rec_id
+    gaze_overlay_path = recpath / "gaze_overlay.mp4"
+    if gaze_overlay_path.exists():
+        logging.debug(f"Gaze overlay already exists at {gaze_overlay_path}.")
 
     else:
         logging.debug(f"{gaze_overlay_path} does not exist.")
-        raw_video_path = files[0]
+        raw_video_path = next(recpath.glob("*.mp4"))
 
         # Format to read timestamps
         oftype = {"timestamp [ns]": np.uint64}
@@ -52,25 +47,21 @@ async def run_modules(
 
         # Read gaze data
         logging.debug("Reading gaze data...")
-        gaze_df = pd.read_csv(Path(recpath, "gaze.csv"), dtype=oftype)
+        gaze_df = pd.read_csv(recpath / "gaze.csv", dtype=oftype)
 
         # Read the world timestamps (needed for gaze module)
         logging.debug("Reading world timestamps...")
 
-        world_timestamps_df = pd.read_csv(
-            Path(recpath, "world_timestamps.csv"), dtype=oftype
-        )
+        world_timestamps_df = pd.read_csv(recpath / "world_timestamps.csv", dtype=oftype)
 
         # Prepare df for gaze overlay
         ts_world = world_timestamps_df["timestamp [ns]"]
 
-        video_for_gaze_module = pd.DataFrame(
-            {
-                "frames": np.arange(frames),
-                "pts": [int(pt) for pt in pts],
-                "timestamp [ns]": ts_world,
-            }
-        )
+        video_for_gaze_module = pd.DataFrame({
+            "frames": np.arange(frames),
+            "pts": pts.astype(int),
+            "timestamp [ns]": ts_world,
+        })
 
         logging.debug("Merging video and gaze dfs..")
         selected_col = ["timestamp [ns]", "gaze x [px]", "gaze y [px]"]
@@ -90,27 +81,23 @@ async def run_modules(
         create_gaze_overlay_video(
             merged_sc_gaze, raw_video_path, ts_world, gaze_overlay_path
         )
-        merged_sc_gaze.to_csv(
-            os.path.join(recpath, "merged_sc_gaze_GM.csv"), index=False
-        )
+        merged_sc_gaze.to_csv(recpath / "merged_sc_gaze_GM.csv", index=False)
 
     #############################################################################
     # 2. Read gaze_overlay_video and get baseframes
     #############################################################################
-    video_df_for_modules, baseframes_modules = get_baseframes(gaze_overlay_path)
-    output_get_baseframes = pd.DataFrame(video_df_for_modules)
-    output_get_baseframes.to_csv(
-        os.path.join(recpath, "output_get_baseframes.csv"), index=False
-    )
+    base64_frames, frame_metadata = encode_video_as_base64(gaze_overlay_path)
+    output_get_baseframes = pd.DataFrame(frame_metadata)
+    output_get_baseframes.to_csv(recpath / "output_get_baseframes.csv", index=False)
 
     #############################################################################
     # 3. Process Frames with GPT-4o
     #############################################################################
     logging.info("Start processing the frames..")
-    async_process_frames = ProcessFrames(
-        baseframes_modules,
-        video_df_for_modules,
-        OPENAI_API_KEY,
+    frame_processor = FrameProcessor(
+        base64_frames,
+        frame_metadata,
+        openai_api_key,
         cloud_api_key,
         rec_id,
         worksp_id,
@@ -121,12 +108,12 @@ async def run_modules(
         end_time_seconds,
     )
 
-    async_process_frames_output_events = await async_process_frames.prompting(
+    async_process_frames_output_events = await frame_processor.prompting(
         recpath, int(batch_size)
     )
     print(async_process_frames_output_events)
     final_output_path = pd.DataFrame(async_process_frames_output_events)
-    final_output_path.to_csv(os.path.join(recpath, "custom_events.csv"), index=False)
+    final_output_path.to_csv(recpath / "custom_events.csv", index=False)
     logging.info(
         "◎ Activity recognition completed and events sent! ⚡️[/]",
         extra={"markup": True},

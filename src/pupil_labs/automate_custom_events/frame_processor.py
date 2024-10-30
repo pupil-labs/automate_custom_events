@@ -10,15 +10,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class ProcessFrames:
+class FrameProcessor:
     def __init__(
         self,
-        base64Frames,
-        vid_modules,
-        OPENAI_API_KEY,
-        cloudtoken,
-        recID,
-        workID,
+        base64_frames,
+        frame_metadata,
+        openai_api_key,
+        cloud_token,
+        recording_id,
+        workspace_id,
         prompt_description,
         prompt_codes,
         batch_size,
@@ -26,19 +26,18 @@ class ProcessFrames:
         end_time_seconds,
     ):
         # General params
-        self.base64Frames = base64Frames
-        self.workspaceid = workID
-        self.recid = recID
-        self.cloud_token = cloudtoken
-        self.OPENAI_API_KEY = OPENAI_API_KEY
-        self.client = OpenAI(api_key=OPENAI_API_KEY)
-        self.mydf = vid_modules
+        self.base64_frames = base64_frames
+        self.frame_metadata = frame_metadata
+        self.openai_api_key = openai_api_key
+        self.cloud_token = cloud_token
+        self.recording_id = recording_id
+        self.workspace_id = workspace_id
         self.session_cost = 0
         self.batch_size = batch_size
-
-        # Time range parameters
         self.start_time_seconds = int(start_time_seconds)
         self.end_time_seconds = int(end_time_seconds)
+
+        self.client = OpenAI(api_key=openai_api_key)
 
         self.activities = re.split(r"\s*;\s*", prompt_description)
         self.codes = re.split(r"\s*;\s*", prompt_codes)
@@ -47,49 +46,49 @@ class ProcessFrames:
         self.activity_states = {code: False for code in self.codes}
 
         self.base_prompt = f"""
-        You are an experienced video annotator specialized in eye-tracking data analysis.
+            You are an experienced video annotator specialized in eye-tracking data analysis.
 
-        **Task:**
-        - Analyze the frames of this egocentric video, the red circle in the overlay indicates where the wearer is looking.
-        - Identify when any of the specified activities happen in the video based on the visual content (video feed) and the gaze location (red circle).
+            **Task:**
+            - Analyze the frames of this egocentric video, the red circle in the overlay indicates where the wearer is looking.
+            - Identify when any of the specified activities happen in the video based on the visual content (video feed) and the gaze location (red circle).
 
-        **Activities and Corresponding Codes:**
+            **Activities and Corresponding Codes:**
 
-        The activities are:
-        {self.activities}
+            The activities are:
+            {self.activities}
 
-        The corresponding codes are:
-        {self.codes}
+            The corresponding codes are:
+            {self.codes}
 
-        **Instructions:**
+            **Instructions:**
 
-        - For each frame:
-            - Examine the visual elements and the position of the gaze overlay.
-            - Determine if any of the specified activities are detected in the frame.
-                - If an activity is detected, record the following information:
-                    - **Frame Number:** [frame number]
-                    - **Timestamp:** [timestamp from the provided dataframe]
-                    - **Code:** [corresponding activity code]
-                - If an activity is not detected, move to the next frame.
-        - Only consider the activities listed above. Be as precise as possible.
-        - Ensure the output is accurate and formatted correctly.
+            - For each frame:
+                - Examine the visual elements and the position of the gaze overlay.
+                - Determine if any of the specified activities are detected in the frame.
+                    - If an activity is detected, record the following information:
+                        - **Frame Number:** [frame number]
+                        - **Timestamp:** [timestamp from the provided dataframe]
+                        - **Code:** [corresponding activity code]
+                    - If an activity is not detected, move to the next frame.
+            - Only consider the activities listed above. Be as precise as possible.
+            - Ensure the output is accurate and formatted correctly.
 
-        **Output Format:**
+            **Output Format:**
 
-        ```
-        Frame [frame number]: Timestamp - [timestamp], Code - [code]
-        ```
-
-        **Examples:**
-
-        - If in frame 25 the user is cutting a red pepper and the timestamp is 65, the output should be:
             ```
-            Frame 25: Timestamp - 65, Code - cutting_red_pper
+            Frame [frame number]: Timestamp - [timestamp], Code - [code]
             ```
-        - If in frame 50 the user is looking at the rear mirror, the output should be:
-            ```
-            Frame 50: Timestamp - [timestamp], Code - looking_rear_mirror
-            ```
+
+            **Examples:**
+
+            - If in frame 25 the user is cutting a red pepper and the timestamp is 65, the output should be:
+                ```
+                Frame 25: Timestamp - 65, Code - cutting_red_pper
+                ```
+            - If in frame 50 the user is looking at the rear mirror, the output should be:
+                ```
+                Frame 50: Timestamp - [timestamp], Code - looking_rear_mirror
+                ```
         """
 
         self.last_event = None
@@ -98,19 +97,21 @@ class ProcessFrames:
         # Check if the timestamp is within the start_time_seconds and end_time_seconds
         if self.start_time_seconds is not None and timestamp < self.start_time_seconds:
             return False
+
         if self.end_time_seconds is not None and timestamp > self.end_time_seconds:
             return False
+
         return True
 
     async def query_frame(self, index, session):
         # Check if the frame's timestamp is within the specified time range
-        timestamp = self.mydf.iloc[index]["timestamp [s]"]
+        timestamp = self.frame_metadata.iloc[index]["timestamp [s]"]
         if not self.is_within_time_range(timestamp):
             # print(f"Timestamp {timestamp} is not within selected timerange")
             return None
 
-        base64_frames_content = [{"image": self.base64Frames[index], "resize": 768}]
-        video_gaze_df_content = [self.mydf.iloc[index].to_dict()]
+        base64_frames_content = [{"image": self.base64_frames[index], "resize": 768}]
+        video_gaze_df_content = [self.frame_metadata.iloc[index].to_dict()]
 
         PROMPT_MESSAGES = [
             {
@@ -130,7 +131,7 @@ class ProcessFrames:
             "max_tokens": 300,
         }
         headers = {
-            "Authorization": f"Bearer {self.OPENAI_API_KEY}",
+            "Authorization": f"Bearer {self.openai_api_key}",
             "Content-Type": "application/json",
         }
 
@@ -170,8 +171,8 @@ class ProcessFrames:
                                 # Activity is starting or being detected for the first time
                                 self.activity_states[code] = True
                                 send_event_to_cloud(
-                                    self.workspaceid,
-                                    self.recid,
+                                    self.workspace_id,
+                                    self.recording_id,
                                     code,
                                     timestamp,
                                     self.cloud_token,
@@ -191,6 +192,7 @@ class ProcessFrames:
                     else:
                         print("No match found in the response")
                         return None
+
                 elif response.status == 429:
                     retry_count += 1
                     wait_time = 2**retry_count  # Exponential backoff
@@ -198,9 +200,11 @@ class ProcessFrames:
                         f"Rate limit hit. Retrying in {wait_time} seconds..."
                     )
                     await asyncio.sleep(wait_time)
+
                 else:
                     logger.debug(f"Error: {response.status}")
                     return None
+
         print("Max retries reached. Exiting.")
         return None
 
@@ -223,18 +227,20 @@ class ProcessFrames:
                 session, start, mid, identified_activities
             )
             results.extend(left_results)
+
         else:
             right_results = await self.binary_search(
                 session, mid + 1, end, identified_activities
             )
             results.extend(right_results)
+
         return results
 
     async def process_batches(self, session, batch_size):
         identified_activities = set()
         all_results = []
-        for i in range(0, len(self.base64Frames), batch_size):
-            end = min(i + batch_size, len(self.base64Frames))
+        for i in range(0, len(self.base64_frames), batch_size):
+            end = min(i + batch_size, len(self.base64_frames))
             batch_results = await self.binary_search(
                 session, i, end, identified_activities
             )

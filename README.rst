@@ -63,6 +63,7 @@ Run it!
 A GUI will appear prompting you to select recording details and enter your desired prompts. To enter the recording details, click on the top button "Select Recording". 
 
 There you need to add the following information:
+
 - Recording Link: Right click to your recording on Pupil Cloud > Share > Copy native recording data link
 - Cloud API token
 - OpenAI API Key
@@ -71,6 +72,7 @@ There you need to add the following information:
 - Start (s) / End (s): Define the temporal period of interest (e.g., in which timeframe should the tool look for the prompted activities)
 
 Once this information has been added, define your prompts and events. Separate your prompts/events with semicolon. For example:
+
 - Prompts: "the driver looks at the rear mirror; the driver turns left"
 - Events: "looking_at_mirror; turning_left"
 

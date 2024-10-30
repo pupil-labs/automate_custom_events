@@ -246,6 +246,8 @@ class FrameProcessor:
             )
             all_results.extend(batch_results)
 
+        return all_results
+
     async def prompting(self, save_path, batch_size):
         async with aiohttp.ClientSession() as session:
             activity_data = await self.process_batches(session, batch_size)

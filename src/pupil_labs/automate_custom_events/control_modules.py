@@ -59,7 +59,7 @@ async def run_modules(
 
         video_for_gaze_module = pd.DataFrame({
             "frames": np.arange(frames),
-            "pts": [int(pt) for pt in pts],
+            "pts": pts.astype(int),
             "timestamp [ns]": ts_world,
         })
 

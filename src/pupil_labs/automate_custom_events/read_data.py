@@ -76,7 +76,7 @@ def get_baseframes(video_path, audio=False, auto_thread_type=True):
     timestamps_s = ts / 1e9
     video_df = pd.DataFrame({
         "frames": np.arange(nframes),
-        "pts": [int(pt) for pt in pts],
+        "pts": pts.astype(int),
         "timestamp [ns]": ts,
         "timestamp [s]": timestamps_s
     })

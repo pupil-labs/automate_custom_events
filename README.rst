@@ -27,7 +27,7 @@ A tool to automate custom events using the Pupil Cloud API and GPT-4o.
 
 Requirements
 ============
-- OpenAI subscription and OpenAI API token: Set up yours using `OpenAI's quick start guide <https://platform.openai.com/docs/quickstart/account-setup>`
+- OpenAI subscription and OpenAI API token: Set up yours using `OpenAI's quick start guide <https://platform.openai.com/docs/quickstart/account-setup>`__
 - Pupil Cloud API token: Click `here <https://cloud.pupil-labs.com/settings/developer>`__ to obtain yours.
 
 Installation
@@ -60,7 +60,19 @@ Run it!
 
    pl-automate-custom-events  
 
-A GUI will appear prompting you to select recording details and enter your desired prompts. To enter the recording details, click on the top button "Select Recording"
+A GUI will appear prompting you to select recording details and enter your desired prompts. To enter the recording details, click on the top button "Select Recording". 
+
+There you need to add the following information:
+- Recording Link: Right click to your recording on Pupil Cloud > Share > Copy native recording data link
+- Cloud API token
+- OpenAI API Key
+- Download Path: Select the path where you want to download the raw recording.
+- Frame batch: The tool applies binary search within batches of frames (e.g., binary search within every 20 frames)  
+- Start (s) / End (s): Define the temporal period of interest (e.g., in which timeframe should the tool look for the prompted activities)
+
+Once this information has been added, define your prompts and events. Separate your prompts/events with semicolon. For example:
+- Prompts: "the driver looks at the rear mirror; the driver turns left"
+- Events: "looking_at_mirror; turning_left"
 
 Support
 ========

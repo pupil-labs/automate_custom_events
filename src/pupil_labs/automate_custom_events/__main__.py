@@ -251,7 +251,6 @@ class App:
         download_path = Path(self.download_path_entry.get())
 
         workspace_id, rec_id = extract_ids(url)
-        recpath = Path(download_path / rec_id)
 
         await run_modules(
             openai_api_key,
@@ -259,7 +258,6 @@ class App:
             rec_id,
             cloud_token,
             download_path,
-            recpath,
             prompt_description,
             event_code,
             batch_size,

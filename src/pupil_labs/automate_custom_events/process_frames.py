@@ -1,7 +1,6 @@
 from openai import OpenAI
 import pandas as pd
 import re
-import os
 import json
 import aiohttp
 from pupil_labs.automate_custom_events.cloud_interaction import send_event_to_cloud
@@ -71,8 +70,8 @@ class ProcessFrames:
                     - **Frame Number:** [frame number]
                     - **Timestamp:** [timestamp from the provided dataframe]
                     - **Code:** [corresponding activity code]
-                - If an activity is not detected, move to the next frame. 
-        - Only consider the activities listed above. Be as precise as possible. 
+                - If an activity is not detected, move to the next frame.
+        - Only consider the activities listed above. Be as precise as possible.
         - Ensure the output is accurate and formatted correctly.
 
         **Output Format:**
@@ -245,8 +244,8 @@ class ProcessFrames:
         async with aiohttp.ClientSession() as session:
             activity_data = await self.process_batches(session, batch_size)
             print("Filtered Activity Data:", activity_data)
+
             output_df = pd.DataFrame(activity_data)
-            output_df.to_csv(
-                os.path.join(save_path, "output_detected_events.csv"), index=False
-            )
+            output_df.to_csv(save_path / "output_detected_events.csv", index=False)
+
             return output_df

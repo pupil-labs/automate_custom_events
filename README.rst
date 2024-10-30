@@ -23,12 +23,12 @@
 Introduction
 ============
 
-Activity recognition module and gaze mapping module to automate custom events using the Cloud API and GPT-V
+A tool to automate custom events using the Pupil Cloud API and GPT-4o.
 
 Requirements
 ============
-- OpenAI subscription and OpenAI API token
-- Pupil Cloud API token 
+- OpenAI subscription and OpenAI API token: Set up yours using `OpenAI's quick start guide <https://platform.openai.com/docs/quickstart/account-setup>`
+- Pupil Cloud API token: Click `here <https://cloud.pupil-labs.com/settings/developer>`__ to obtain yours.
 
 Installation
 ============
@@ -59,3 +59,10 @@ Run it!
 ::
 
    pl-automate-custom-events  
+
+A GUI will appear prompting you to select recording details and enter your desired prompts. To enter the recording details, click on the top button "Select Recording"
+
+Support
+========
+
+For any questions/bugs, reach out to our `Discord server <https://pupil-labs.com/chat/>`__  or send us an email to info@pupil-labs.com. 

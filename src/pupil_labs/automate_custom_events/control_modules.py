@@ -6,15 +6,15 @@ import logging
 import numpy as np
 from pupil_labs.automate_custom_events.cloud_interaction import download_recording
 from pupil_labs.automate_custom_events.read_data import (
-    get_baseframes,
+    encode_video_as_base64,
     create_gaze_overlay_video,
 )
-from pupil_labs.automate_custom_events.process_frames import ProcessFrames
+from pupil_labs.automate_custom_events.process_frames import FrameProcessor
 from pupil_labs.dynamic_content_on_rim.video.read import read_video_ts
 
 
 async def run_modules(
-    OPENAI_API_KEY,
+    openai_api_key,
     worksp_id,
     rec_id,
     cloud_api_key,
@@ -97,8 +97,8 @@ async def run_modules(
     #############################################################################
     # 2. Read gaze_overlay_video and get baseframes
     #############################################################################
-    video_df_for_modules, baseframes_modules = get_baseframes(gaze_overlay_path)
-    output_get_baseframes = pd.DataFrame(video_df_for_modules)
+    video_df, baseframes = encode_video_as_base64(gaze_overlay_path)
+    output_get_baseframes = pd.DataFrame(video_df)
     output_get_baseframes.to_csv(
         os.path.join(recpath, "output_get_baseframes.csv"), index=False
     )
@@ -107,10 +107,10 @@ async def run_modules(
     # 3. Process Frames with GPT-4o
     #############################################################################
     logging.info("Start processing the frames..")
-    async_process_frames = ProcessFrames(
-        baseframes_modules,
-        video_df_for_modules,
-        OPENAI_API_KEY,
+    frame_processor = FrameProcessor(
+        baseframes,
+        video_df,
+        openai_api_key,
         cloud_api_key,
         rec_id,
         worksp_id,
@@ -121,7 +121,7 @@ async def run_modules(
         end_time_seconds,
     )
 
-    async_process_frames_output_events = await async_process_frames.prompting(
+    async_process_frames_output_events = await frame_processor.prompting(
         recpath, int(batch_size)
     )
     print(async_process_frames_output_events)

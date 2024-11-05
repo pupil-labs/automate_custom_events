@@ -11,15 +11,15 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class ProcessFrames:
+class FrameProcessor:
     def __init__(
         self,
-        base64Frames,
-        vid_modules,
-        OPENAI_API_KEY,
-        cloudtoken,
-        recID,
-        workID,
+        base64_frames,
+        vid_df,
+        openai_api_key,
+        cloud_token,
+        recording_id,
+        workspace_id,
         prompt_description,
         prompt_codes,
         batch_size,
@@ -27,20 +27,17 @@ class ProcessFrames:
         end_time_seconds,
     ):
         # General params
-        self.base64Frames = base64Frames
-        self.workspaceid = workID
-        self.recid = recID
-        self.cloud_token = cloudtoken
-        self.OPENAI_API_KEY = OPENAI_API_KEY
-        self.client = OpenAI(api_key=OPENAI_API_KEY)
-        self.mydf = vid_modules
-        self.session_cost = 0
+        self.base64_frames = base64_frames
+        self.frame_metadata = vid_df
+        self.openai_api_key = openai_api_key
+        self.cloud_token = cloud_token
+        self.recording_id = recording_id
+        self.workspace_id = workspace_id
         self.batch_size = batch_size
-
-        # Time range parameters
         self.start_time_seconds = int(start_time_seconds)
         self.end_time_seconds = int(end_time_seconds)
 
+        self.client = OpenAI(api_key=openai_api_key)
         self.activities = re.split(r"\s*;\s*", prompt_description)
         self.codes = re.split(r"\s*;\s*", prompt_codes)
 

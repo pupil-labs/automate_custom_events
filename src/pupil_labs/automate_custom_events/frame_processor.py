@@ -10,7 +10,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 class FrameProcessor:
     def __init__(
         self,
@@ -102,13 +101,13 @@ class FrameProcessor:
 
     async def query_frame(self, index, session):
         # Check if the frame's timestamp is within the specified time range
-        timestamp = self.mydf.iloc[index]["timestamp [s]"]
+        timestamp = self.frame_metadata.iloc[index]["timestamp [s]"]
         if not self.is_within_time_range(timestamp):
             # print(f"Timestamp {timestamp} is not within selected timerange")
             return None
 
-        base64_frames_content = [{"image": self.base64Frames[index], "resize": 768}]
-        video_gaze_df_content = [self.mydf.iloc[index].to_dict()]
+        base64_frames_content = [{"image": self.base64_frames[index], "resize": 768}]
+        video_gaze_df_content = [self.frame_metadata.iloc[index].to_dict()]
 
         PROMPT_MESSAGES = [
             {
@@ -128,7 +127,7 @@ class FrameProcessor:
             "max_tokens": 300,
         }
         headers = {
-            "Authorization": f"Bearer {self.OPENAI_API_KEY}",
+            "Authorization": f"Bearer {self.openai_api_key}",
             "Content-Type": "application/json",
         }
 
@@ -168,8 +167,8 @@ class FrameProcessor:
                                 # Activity is starting or being detected for the first time
                                 self.activity_states[code] = True
                                 send_event_to_cloud(
-                                    self.workspaceid,
-                                    self.recid,
+                                    self.workspace_id,
+                                    self.recording_id,
                                     code,
                                     timestamp,
                                     self.cloud_token,
@@ -207,7 +206,6 @@ class FrameProcessor:
             return []
 
         mid = (start + end) // 2
-        # print(f"Binary search range: {start}-{end}, mid: {mid}")
 
         results = []
         # Process the mid frame and ensure both prompts are evaluated
@@ -231,12 +229,13 @@ class FrameProcessor:
     async def process_batches(self, session, batch_size):
         identified_activities = set()
         all_results = []
-        for i in range(0, len(self.base64Frames), batch_size):
-            end = min(i + batch_size, len(self.base64Frames))
+        for i in range(0, len(self.base64_frames), batch_size):
+            end = min(i + batch_size, len(self.base64_frames))
             batch_results = await self.binary_search(
                 session, i, end, identified_activities
             )
             all_results.extend(batch_results)
+        return all_results
 
     async def prompting(self, save_path, batch_size):
         async with aiohttp.ClientSession() as session:

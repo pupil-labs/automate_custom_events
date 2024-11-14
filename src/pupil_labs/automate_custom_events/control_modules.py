@@ -2,7 +2,7 @@ import pandas as pd
 import logging
 import numpy as np
 from pupil_labs.automate_custom_events.cloud_interaction import download_recording
-from pupil_labs.automate_custom_events.read_data import (
+from pupil_labs.automate_custom_events.video_utils import (
     encode_video_as_base64,
     create_gaze_overlay_video,
 )
